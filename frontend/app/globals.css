@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Base surface */
+    --background: 210 20% 98%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary accent: indigo/blue-600, used sparingly */
+    --primary: 231 71% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-50: 231 100% 97%;
+    --primary-100: 231 91% 93%;
+
+    /* Secondary: near-black button */
+    --secondary: 222 47% 11%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 210 20% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 231 100% 97%;
+    --accent-foreground: 231 71% 40%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 142 71% 35%;
+    --success-foreground: 0 0% 100%;
+
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --border: 214 20% 90%;
+    --input: 214 20% 88%;
+    --ring: 231 71% 58%;
+
+    --radius: 0.75rem;
+  }
+
+  /* JobMatch AI is a light-only product by design (no dark mode toggle
+     exists yet), so we deliberately do NOT follow prefers-color-scheme --
+     the brand should look the same bright, professional white regardless of
+     the visitor's OS setting. Revisit if/when a real dark theme + toggle is
+     built instead of an implicit OS-driven one. */
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "cv11", "ss01";
+  }
+}
+
+@layer utilities {
+  .clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
