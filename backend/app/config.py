@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.3-70b-versatile"
     runpod_api_key: str = ""
     runpod_endpoint: str = ""
+    runpod_model: str = "qwen2.5:14b"
 
     embedding_provider: str = "local"
     local_embedding_model: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -52,6 +53,11 @@ class Settings(BaseSettings):
     jsearch_queries: str = "software developer jobs,backend developer jobs"
     jsearch_country: str = "in"
     jsearch_num_pages: int = 1
+    theirstack_api_key: str = ""
+    theirstack_queries: str = "Backend Developer,Python Developer,Software Engineer"
+    theirstack_country: str = "IN"
+    theirstack_max_age_days: int = 3
+    theirstack_limit_per_query: int = 10
 
     resume_storage_dir: str = "./storage/resumes"
     max_resume_size_mb: int = 10
@@ -84,6 +90,10 @@ class Settings(BaseSettings):
     @property
     def jsearch_queries_list(self) -> list[str]:
         return [q.strip() for q in self.jsearch_queries.split(",") if q.strip()]
+
+    @property
+    def theirstack_queries_list(self) -> list[str]:
+        return [q.strip() for q in self.theirstack_queries.split(",") if q.strip()]
 
     @property
     def match_weights(self) -> dict[str, float]:

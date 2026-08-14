@@ -33,6 +33,7 @@ _DEFAULT_TRUST_TIER_BY_ADAPTER: dict[str, str] = {
     "seed": "aggregator",
     "adzuna": "aggregator",
     "jsearch": "aggregator",
+    "theirstack": "platform",  # richer, pre-structured metadata than a raw aggregator feed
 }
 
 
@@ -71,7 +72,48 @@ async def _ingest_source(db: AsyncSession, adapter_key: str) -> dict:
         await db.commit()
         return {"fetched": 0, "accepted": 0, "duplicates": 0, "failures": 1, "status": "failed"}
 
-    fetched = len(normalized_jobs)
+    fetched = len(normalized_jobs)  # raw count from the adapter, reported as-is regardless of dedup below
+
+    # Multi-query adapters (e.g. TheirStackAdapter/JSearchAdapter running
+    # several search terms per pass) can legitimately return the same real
+    # posting more than once when two query terms both match it. Dedup by
+    # source_job_id BEFORE the per-record loop: the DB's own uniqueness
+    # constraint would catch it too, but only after the row is already
+    # flushed, and repeated IntegrityErrors within one session were observed
+    # live to cascade into "MissingGreenlet" failures on every subsequent
+    # record in the same batch (an asyncpg/SQLAlchemy connection-pool
+    # interaction, not something rollback() alone reliably recovers from) --
+    # cheaper and more reliable to just never attempt the duplicate insert.
+    seen_ids: set[str] = set()
+    deduped_jobs: list[NormalizedJob] = []
+    intra_batch_dupes = 0
+    for nj in normalized_jobs:
+        if nj.source_job_id in seen_ids:
+            intra_batch_dupes += 1
+            continue
+        seen_ids.add(nj.source_job_id)
+        deduped_jobs.append(nj)
+    if intra_batch_dupes:
+        logger.info("intra_batch_dupes_skipped", source=adapter_key, count=intra_batch_dupes)
+    normalized_jobs = deduped_jobs
+
+    # Same reasoning, cross-run: re-ingesting live postings (still within the
+    # freshness window) will keep returning jobs already stored from an
+    # earlier pass. Check-then-skip against the DB up front rather than
+    # attempting the insert and relying on the unique-constraint violation +
+    # rollback to recover cleanly -- proactive is strictly safer here.
+    candidate_ids = [nj.source_job_id for nj in normalized_jobs]
+    already_known: set[str] = set()
+    if candidate_ids:
+        existing_stmt = select(Job.source_job_id).where(
+            Job.source_id == source.id, Job.source_job_id.in_(candidate_ids)
+        )
+        already_known = set((await db.execute(existing_stmt)).scalars().all())
+    already_seen_count = len(already_known)
+    normalized_jobs = [nj for nj in normalized_jobs if nj.source_job_id not in already_known]
+    if already_seen_count:
+        logger.info("already_ingested_skipped", source=adapter_key, count=already_seen_count)
+
     accepted = 0
     duplicates = 0
     failures = 0
